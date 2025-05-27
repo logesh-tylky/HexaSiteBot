@@ -1,17 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="styles.css">
-  <title>Vanilla JavaScript App</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HexaCorp Chatbot</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #chatTab {
+      position: fixed;
+      bottom: 30px;
+      right: 20px;
+      background-color: #0c3e6e;
+      color: white;
+      border-radius: 30px;
+      /* padding: 8px 16px; */
+      padding-left: 45px;
+      font-size: 23px;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      gap: 10px;
+      transition: background 0.3s ease;
+      width: 280px;
+      height: 50px;
+    }
+
+    #chatTab img {
+      height: 28px;
+      width: 28px;
+    }
+
+    #chatWindow {
+      position: fixed;
+      bottom: 0px;
+      right: 20px;
+      width: 360px;
+      height: 520px;
+      background-color: #fff;
+      border-radius: 20px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+      transform: translateY(100%);
+      transition: transform 0.3s ease-in-out;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 1001;
+    }
+
+    #chatWindow.open {
+      transform: translateY(0);
+      bottom: 20px;
+    }
+
+    #banner {
+      background-color: #0c3e6e;
+      color: white;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    #closeChat {
+      font-size: 22px;
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+
+    #webchat {
+      flex-grow: 1;
+      overflow: hidden;
+    }
+
+    
+  </style>
 </head>
-
 <body>
-  <main>
-    <h1>Vanilla JavaScript App</h1>
-  </main>
-</body>
 
+  <div id="chatTab">
+    <img src="voice.png" alt="Bot Icon" />
+    <span>Hexacorp assistant</span>
+  </div>
+
+  <div id="chatWindow">
+    <div id="banner">
+      Hexacorp assistant
+      <button id="closeChat">×</button>
+    </div>
+    <div id="webchat" role="main"></div>
+  </div>
+
+  <script crossorigin="anonymous" src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+  <script>
+    (async function () {
+      const styleOptions = {
+        botAvatarImage: 'voice.png',
+        botAvatarInitials: '',
+
+        backgroundColor: '#ffffff',
+        bubbleBackground: 'rgba(92, 155, 214, 0.17)',
+        bubbleTextColor: '#0c3e6e',
+        bubbleBorderRadius: 10,
+        bubbleFromUserBackground: '#004080',
+        bubbleFromUserTextColor: '#ffffff',
+        bubbleFromBotBackground: '#f5f5f5',
+        bubbleFromBotTextColor: 'white',
+        bubbleFromBotBorderRadius: 10,
+        bubbleFromUserBorderRadius: 10,
+        suggestedActionLayout: 'stacked',
+        suggestedActionTextWrap: true,
+        suggestedActionBorderRadius: 20,
+        suggestedActionBackground: '#ffffff',
+        suggestedActionBorder: '1px solid #ccc',
+        suggestedActionTextColor: '#0c3e6e',
+        suggestedActionDisabledBackground: '#0c3e6e',
+        suggestedActionDisabledTextColor: '#0c3e6e',
+        sendBoxBackground: '#f9f9f9',
+        sendBoxTextColor: '#333333',
+        hideUploadButton: false
+      };
+
+      const tokenEndpointURL = new URL("https://20a7da57c1de41e385cecbdbbe331d.10.environment.api.powerplatform.com/powervirtualagents/botsbyschema/cr03a_hexaCorp/directline/token?api-version=2022-03-01-preview");
+      const locale = document.documentElement.lang || 'en';
+      const apiVersion = tokenEndpointURL.searchParams.get('api-version');
+
+      const [directLineURL, token] = await Promise.all([
+        fetch(new URL(`/powervirtualagents/regionalchannelsettings?api-version=${apiVersion}`, tokenEndpointURL))
+          .then(response => response.json())
+          .then(data => data.channelUrlsById.directline),
+        fetch(tokenEndpointURL)
+          .then(response => response.json())
+          .then(data => data.token)
+      ]);
+
+      const directLine = WebChat.createDirectLine({
+        domain: new URL('v3/directline', directLineURL),
+        token
+      });
+
+      const subscription = directLine.connectionStatus$.subscribe({
+        next(value) {
+          if (value === 2) {
+            directLine.postActivity({
+              localTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              locale,
+              name: 'startConversation',
+              type: 'event'
+            }).subscribe();
+            subscription.unsubscribe();
+          }
+        }
+      });
+
+      WebChat.renderWebChat({ directLine, locale, styleOptions }, document.getElementById('webchat'));
+
+      document.getElementById('chatTab').addEventListener('click', () => {
+        document.getElementById('chatWindow').classList.toggle('open');
+      });
+
+      document.getElementById('closeChat').addEventListener('click', () => {
+        document.getElementById('chatWindow').classList.remove('open');
+      });
+    })();
+  </script>
+</body>
 </html>
